@@ -1,13 +1,16 @@
 #!/usr/bin/python
+
 from random import shuffle, sample, choice
-from sys import argv
+import matplotlib.pyplot as plt
+import matplotlib
 
 N = 500 # population size - must be even
 n = 10 # number of people with bad allele
-N_ITER = 300 # number of simulation iterations
+N_ITER = 1000 # number of simulation iterations
 
-number_of_generations = 100
+number_of_generations = 500
 nr_of_generations_to_track = 1
+
 
 ###############
 class Individual:
@@ -56,9 +59,11 @@ def consanguinous_mate(current_generation, offset):
     return next_generation
 
 ##########
-def procreate(current_generation, gen_number):
-    next_generation = random_mate(current_generation)
-    #next_generation = consanguinous_mate(current_generation, gen_number%2)
+def procreate(mating_type,current_generation, gen_number):
+    if mating_type=="consang":
+        next_generation = consanguinous_mate(current_generation, gen_number%2)
+    else:
+        next_generation = random_mate(current_generation)
     return next_generation
 
 ####################################
@@ -70,10 +75,8 @@ def find_allele_fraction(population):
 
     return bcount/(len(population)*2) # two alleles per individual
 
-
 ####################################
-def main():
-
+def simulate(mating_type):
     avg_homozygous_ct   = [0]*number_of_generations
     avg_allele_fraction = [0]*number_of_generations
 
@@ -88,23 +91,53 @@ def main():
             # how many are homozygous as a function of time (number of generations)
             homozygous_ct = len([x for x in generation[current_gen] if x.genotype==["B","B"]])
             allele_fraction = find_allele_fraction(generation[current_gen])
-            #cf = consang_parent_fraction(generation[current_gen])
-            #print " gen number: %3d   allele fraction: %5.3f  homozygous: %3d   cons parent fraction:  %5.3f" \
-            #      %(gen_number, allele_fraction, homozygous_ct, cf)
             avg_homozygous_ct[gen_number] += homozygous_ct
             avg_allele_fraction[gen_number] += allele_fraction
-            next_generation = procreate(generation[0], gen_number)
+            next_generation = procreate(mating_type, generation[0], gen_number)
             generation[0] = next_generation
 
     for gen_number in range(number_of_generations):
         avg_homozygous_ct[gen_number] /= N_ITER*1.0
         avg_allele_fraction[gen_number] /= N_ITER*1.0
 
+    return avg_homozygous_ct, avg_allele_fraction
+
+####################################
+def main():
+
+    avg_homozygous_ct = {}
+    avg_allele_fraction = {}
+
+    for mating_type in ["random", "consang"]:
+        avg_homozygous_ct[mating_type], avg_allele_fraction[mating_type]  = simulate(mating_type)
+
     for gen_number in range(number_of_generations):
-        print " %3d  %5.1f   %5.3f " %(gen_number, avg_homozygous_ct[gen_number], avg_allele_fraction[gen_number])
+        print " %3d  %5.1f   %5.3f %5.1f   %5.3f " %(gen_number, \
+                                       avg_homozygous_ct["random"][gen_number], avg_allele_fraction["random"][gen_number],\
+                                       avg_homozygous_ct["consang"][gen_number], avg_allele_fraction["consang"][gen_number])
 
     print "N:",N
     print "n:",n
+
+    max_ct = max(avg_homozygous_ct["random"]+avg_homozygous_ct["consang"])
+
+    g = range(number_of_generations)
+    font = {'family': 'Bitstream Vera Sans',
+            'weight': 'bold',
+            'size': 26}
+
+    matplotlib.rc('font', **font)
+    plt.xlabel('Generation', fontsize=36)
+    plt.ylabel('NUmber of homozygotes', fontsize=36)
+    plt.title('Homozygotes under \nrandom and consanguinous mating', fontsize=40)
+    plt.text (number_of_generations/3,  max_ct/2, 'Population size: %d' %N)
+    plt.text (number_of_generations/3, max_ct*4/10, 'Initial minority allele heterozygotes: %d' % n)
+    plt.text (number_of_generations/3, max_ct*3/10, 'Number of simulated scenarios: %d' % N_ITER)
+
+
+    plt.plot(g, avg_homozygous_ct["random"],'bo',
+             g, avg_homozygous_ct["consang"],'ro')
+    plt.show()
 
 ####################################
 if __name__ == '__main__':

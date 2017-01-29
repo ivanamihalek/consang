@@ -8,7 +8,7 @@ N = 100 # population size
 n = 10  # number of people with bad allele
 N_ITER = 100 # number of simulation iterations
 
-number_of_generations = 100
+number_of_generations = 500
 
 class Individual:
     def __init__ (self, genotype):
